@@ -71,6 +71,15 @@ docker compose down
 docker compose up -d --build
 ```
 
+如果服务器拉取 Docker Hub 基础镜像超时，但本机已经有旧镜像，可以先不重新构建，直接用最新 `docker-compose.yml` 覆盖启动命令重建容器：
+
+```bash
+git pull
+docker compose down
+docker compose up -d --force-recreate --no-build
+docker compose logs -f smsbower2api
+```
+
 如果服务器仍然打不开，先在服务器上检查：
 
 ```bash

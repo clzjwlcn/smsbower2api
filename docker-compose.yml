@@ -2,6 +2,7 @@ services:
   smsbower2api:
     build: .
     container_name: smsbower2api
+    command: sh -c "node scripts/write-dev-vars.mjs && npm run dev -- --hostname 0.0.0.0 --port 3000"
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
