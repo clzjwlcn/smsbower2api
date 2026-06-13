@@ -95,6 +95,15 @@ type AdminAccount = {
   passwordSource: string;
 };
 
+type UpstreamTest = {
+  ok: boolean;
+  message: string;
+  balance?: { balance: string; raw: string };
+  raw?: string;
+  error?: string;
+  checkedAt: string;
+};
+
 type Announcement = {
   enabled: boolean;
   title: string;
@@ -265,6 +274,8 @@ export default function DashboardClient({
   const [adminAccount, setAdminAccount] = useState<AdminAccount | null>(null);
   const [adminMessage, setAdminMessage] = useState("");
   const [adminBusy, setAdminBusy] = useState(false);
+  const [upstreamTest, setUpstreamTest] = useState<UpstreamTest | null>(null);
+  const [upstreamBusy, setUpstreamBusy] = useState(false);
   const [origin] = useState(() =>
     typeof window === "undefined" ? "" : window.location.origin
   );
@@ -534,6 +545,38 @@ export default function DashboardClient({
       );
     } finally {
       setAdminBusy(false);
+    }
+  }
+
+  async function testUpstream() {
+    setUpstreamBusy(true);
+    setUpstreamTest(null);
+    try {
+      const data = await api<UpstreamTest>("/api/admin/upstream-test", {
+        method: "POST",
+        adminAuth: getAdminAuth(),
+      });
+      setUpstreamTest(data);
+      if (data.ok && data.balance) {
+        setAdmin((current) =>
+          current
+            ? {
+                ...current,
+                upstreamBalance: data.balance ?? null,
+                upstreamError: "",
+              }
+            : current
+        );
+      }
+    } catch (error) {
+      setUpstreamTest({
+        ok: false,
+        message: "SMSBower 通讯失败。",
+        error: error instanceof Error ? error.message : "未知错误",
+        checkedAt: new Date().toISOString(),
+      });
+    } finally {
+      setUpstreamBusy(false);
     }
   }
 
@@ -1106,12 +1149,41 @@ export default function DashboardClient({
             <section className="grid gap-5">
               <div className="grid gap-5 md:grid-cols-3">
                 <section className="rounded-lg border border-slate-300 bg-white p-5">
-                  <p className="text-sm text-slate-500">上游余额</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm text-slate-500">上游余额</p>
+                    <button
+                      className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={upstreamBusy || adminBusy}
+                      type="button"
+                      onClick={testUpstream}
+                    >
+                      {upstreamBusy ? "测试中" : "通讯测试"}
+                    </button>
+                  </div>
                   <strong className="mt-2 block text-2xl">
                     {admin?.upstreamBalance?.balance ?? "--"}
                   </strong>
                   {admin?.upstreamError && (
                     <p className="mt-2 text-sm text-rose-700">{admin.upstreamError}</p>
+                  )}
+                  {upstreamTest && (
+                    <div
+                      className={`mt-3 rounded border px-3 py-2 text-xs ${
+                        upstreamTest.ok
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-rose-200 bg-rose-50 text-rose-800"
+                      }`}
+                    >
+                      <p className="font-medium">{upstreamTest.message}</p>
+                      <p className="mt-1 break-words">
+                        {upstreamTest.ok
+                          ? `响应：${upstreamTest.raw ?? upstreamTest.balance?.raw ?? "--"}`
+                          : `错误：${upstreamTest.error ?? "--"}`}
+                      </p>
+                      <p className="mt-1 text-[11px] opacity-80">
+                        {new Date(upstreamTest.checkedAt).toLocaleString()}
+                      </p>
+                    </div>
                   )}
                 </section>
                 <section className="rounded-lg border border-slate-300 bg-white p-5">
