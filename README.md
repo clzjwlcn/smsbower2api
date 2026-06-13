@@ -34,9 +34,9 @@ APP_ALLOWED_HOSTS=true
 
 MYSQL_DATABASE=smsbower2api
 MYSQL_USER=smsbower
-MYSQL_PASSWORD=改成强密码
-MYSQL_ROOT_PASSWORD=改成另一个强密码
-DATABASE_URL=mysql://smsbower:改成强密码@mysql:3306/smsbower2api
+MYSQL_PASSWORD=
+MYSQL_ROOT_PASSWORD=
+DATABASE_URL=
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=asd123321
@@ -48,6 +48,8 @@ SMSBOWER_WEBHOOK_SECRET=改成一串随机字符
 SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
 ```
 
+`MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`DATABASE_URL` 可以留空，`sh scripts/deploy-mysql.sh` 会自动生成随机密码并写回 `.env`。
+
 建议上线后立刻修改 `ADMIN_PASSWORD` 和 `SMSBOWER_WEBHOOK_SECRET`。
 
 ### 4. 一键启动
@@ -56,7 +58,7 @@ SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
 sh scripts/deploy-mysql.sh
 ```
 
-这个脚本会自动拉取最新代码、启动 `smsbower2api` 和 `mysql` 两个容器、创建 MySQL 表，并尝试把旧版 `.wrangler` D1 数据导入 MySQL。
+这个脚本会自动拉取最新代码、生成 MySQL 随机账号密码、启动 `smsbower2api` 和 `mysql` 两个容器、创建 MySQL 表，并尝试把旧版 `.wrangler` D1 数据导入 MySQL。
 
 也可以手动启动：
 
