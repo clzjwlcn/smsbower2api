@@ -83,6 +83,10 @@ type AdminSettings = {
   apiKeyConfigured: boolean;
   apiKeyPreview: string;
   apiKeySource: string;
+  httpProxyUrl: string;
+  httpProxyConfigured: boolean;
+  httpProxyPreview: string;
+  httpProxySource: string;
   defaultApiBaseUrl: string;
   announcementEnabled: boolean;
   announcementTitle: string;
@@ -328,6 +332,7 @@ export default function DashboardClient({
   const [settingsForm, setSettingsForm] = useState({
     apiBaseUrl: "https://smsbower.page/stubs/handler_api.php",
     apiKey: "",
+    httpProxyUrl: "",
     announcementEnabled: false,
     announcementTitle: "",
     announcementBody: "",
@@ -491,6 +496,7 @@ export default function DashboardClient({
       setSettingsForm({
         apiBaseUrl: settingsData.settings.apiBaseUrl,
         apiKey: "",
+        httpProxyUrl: settingsData.settings.httpProxyUrl,
         announcementEnabled: settingsData.settings.announcementEnabled,
         announcementTitle: settingsData.settings.announcementTitle,
         announcementBody: settingsData.settings.announcementBody,
@@ -532,6 +538,7 @@ export default function DashboardClient({
       setSettingsForm({
         apiBaseUrl: data.settings.apiBaseUrl,
         apiKey: "",
+        httpProxyUrl: data.settings.httpProxyUrl,
         announcementEnabled: data.settings.announcementEnabled,
         announcementTitle: data.settings.announcementTitle,
         announcementBody: data.settings.announcementBody,
@@ -979,7 +986,7 @@ export default function DashboardClient({
                 <div>
                   <h2 className="text-lg font-semibold">接口设置</h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    SMSBower API Key 和请求地址。
+                    SMSBower API Key、请求地址和上游代理。
                   </p>
                 </div>
                 <Field
@@ -1005,6 +1012,26 @@ export default function DashboardClient({
                 <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
                   <p>当前 Key：{adminSettings?.apiKeyPreview || "未设置"}</p>
                   <p>来源：{adminSettings?.apiKeySource || "--"}</p>
+                </div>
+                <Field
+                  label="HTTP 代理"
+                  placeholder="例如：http://user:pass@1.2.3.4:7890，留空则直连"
+                  value={settingsForm.httpProxyUrl}
+                  onChange={(value) =>
+                    setSettingsForm((form) => ({
+                      ...form,
+                      httpProxyUrl: value,
+                    }))
+                  }
+                />
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <p>
+                    当前代理：
+                    {adminSettings?.httpProxyConfigured
+                      ? adminSettings.httpProxyPreview
+                      : "未设置，直连"}
+                  </p>
+                  <p>来源：{adminSettings?.httpProxySource || "--"}</p>
                 </div>
                 <div className="border-t border-slate-200 pt-3">
                   <h3 className="text-sm font-semibold text-slate-900">首页公告</h3>

@@ -10,6 +10,7 @@ export type RuntimeEnv = typeof env & {
   DATABASE_URL?: string;
   SMSBOWER_API_KEY?: string;
   SMSBOWER_API_BASE_URL?: string;
+  SMSBOWER_HTTP_PROXY_URL?: string;
   ADMIN_TOKEN?: string;
   ADMIN_USERNAME?: string;
   ADMIN_PASSWORD?: string;

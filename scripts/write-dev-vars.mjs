@@ -6,6 +6,7 @@ const defaults = {
   ADMIN_TOKEN: "",
   SMSBOWER_API_KEY: "",
   SMSBOWER_API_BASE_URL: "https://smsbower.page/stubs/handler_api.php",
+  SMSBOWER_HTTP_PROXY_URL: "",
   SMSBOWER_WEBHOOK_SECRET: "",
   SMSBOWER_WEBHOOK_ALLOWED_IPS: "167.235.198.205",
 };

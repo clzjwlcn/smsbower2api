@@ -43,6 +43,7 @@ ADMIN_PASSWORD=asd123321
 
 SMSBOWER_API_BASE_URL=https://smsbower.page/stubs/handler_api.php
 SMSBOWER_API_KEY=你的_smsbower_api_key
+SMSBOWER_HTTP_PROXY_URL=
 
 SMSBOWER_WEBHOOK_SECRET=改成一串随机字符
 SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
@@ -152,7 +153,22 @@ SMSBower API 请求地址默认是：
 https://smsbower.page/stubs/handler_api.php
 ```
 
-API Key 也可以不写在 `.env`，直接在后台“接口设置”里保存。
+API Key 和 HTTP 代理也可以不写在 `.env`，直接在后台“接口设置”里保存。
+
+如果服务器所在地区无法直连 SMSBower，可以在后台“接口设置”里填写 HTTP 代理：
+
+```text
+http://代理IP:端口
+http://账号:密码@代理IP:端口
+```
+
+也可以在 `.env` 里设置：
+
+```bash
+SMSBOWER_HTTP_PROXY_URL=http://user:pass@1.2.3.4:7890
+```
+
+保存后点击后台“通讯测试”，SMSBower 请求会通过这个代理发出。这个代理只影响 SMSBower 上游 API 请求，不影响网站访问和 MySQL。
 
 如果后台“通讯测试”显示：
 
