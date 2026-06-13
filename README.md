@@ -71,6 +71,14 @@ http://服务器IP:8080/
 http://服务器IP:8080/admin
 ```
 
+如果使用域名或宝塔反向代理访问，请在 `.env` 中设置允许访问的域名：
+
+```bash
+APP_ALLOWED_HOSTS=sms.miaolv.net
+```
+
+多个域名用英文逗号分隔，例如 `APP_ALLOWED_HOSTS=sms.miaolv.net,www.example.com`。
+
 如果之前已经启动过旧容器，修复后请重新构建并重启：
 
 ```bash

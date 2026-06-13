@@ -12,6 +12,7 @@ services:
       - "${APP_PORT:-3000}:3000"
     environment:
       PORT: 3000
+      APP_ALLOWED_HOSTS: ${APP_ALLOWED_HOSTS:-sms.miaolv.net}
       CLOUDFLARE_CF_FETCH_ENABLED: "false"
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-asd123321}
