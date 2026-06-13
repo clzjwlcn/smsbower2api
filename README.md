@@ -64,6 +64,25 @@ http://服务器IP:8080/
 http://服务器IP:8080/admin
 ```
 
+如果之前已经启动过旧容器，修复后请重新构建并重启：
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+如果服务器仍然打不开，先在服务器上检查：
+
+```bash
+docker compose ps
+docker compose logs --tail=100 smsbower2api
+docker compose exec smsbower2api sh -lc "wget -qO- http://127.0.0.1:3000/ | head"
+curl -I http://127.0.0.1:${APP_PORT:-3000}/
+ss -lntp | grep ":${APP_PORT:-3000}"
+```
+
+日志里应该能看到服务监听在 `http://0.0.0.0:3000/`。如果容器内能访问、服务器本机 `curl` 也能访问，但浏览器访问 `http://服务器IP:端口/` 不通，请在云服务器安全组和系统防火墙放行对应端口。
+
 ## 后台设置
 
 进入 `/admin` 后可以设置：
@@ -163,7 +182,7 @@ docker compose down
 
 ```bash
 npm install
-npm run dev -- --host 127.0.0.1 --port 3000
+npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
 构建检查：
