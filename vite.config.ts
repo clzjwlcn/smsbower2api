@@ -9,13 +9,18 @@ const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
 
 const { d1, r2 } = hostingConfig;
 
-const allowedHosts = Array.from(
-  new Set(
-    ["sms.miaolv.net", ...(process.env.APP_ALLOWED_HOSTS ?? "").split(",")]
-      .map((host) => host.trim())
-      .filter(Boolean)
-  )
-);
+const configuredAllowedHosts = (process.env.APP_ALLOWED_HOSTS ?? "true").trim();
+const allowedHosts =
+  configuredAllowedHosts.toLowerCase() === "true"
+    ? true
+    : Array.from(
+        new Set(
+          configuredAllowedHosts
+            .split(",")
+            .map((host) => host.trim())
+            .filter(Boolean)
+        )
+      );
 
 const localBindingConfig = {
   main: "./worker/index.ts",

@@ -71,13 +71,13 @@ http://服务器IP:8080/
 http://服务器IP:8080/admin
 ```
 
-如果使用域名或宝塔反向代理访问，请在 `.env` 中设置允许访问的域名：
+默认允许所有访问域名，宝塔绑定域名后可以直接访问。如果你想限制只允许指定域名访问，可以在 `.env` 中设置：
 
 ```bash
 APP_ALLOWED_HOSTS=sms.miaolv.net
 ```
 
-多个域名用英文逗号分隔，例如 `APP_ALLOWED_HOSTS=sms.miaolv.net,www.example.com`。
+多个域名用英文逗号分隔，例如 `APP_ALLOWED_HOSTS=sms.miaolv.net,www.example.com`。保持默认 `APP_ALLOWED_HOSTS=true` 表示允许所有域名。
 
 如果之前已经启动过旧容器，修复后请重新构建并重启：
 
