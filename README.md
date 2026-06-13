@@ -54,11 +54,7 @@ docker compose up -d --build
 - 前台：`http://服务器IP:3000/`
 - 后台：`http://服务器IP:3000/admin`
 
-默认后台账号密码：
 
-```text
-账号：admin
-密码：asd123321
 ```
 
 如果你在 `.env` 中修改了端口，例如 `APP_PORT=8080`，访问地址就是：
