@@ -92,6 +92,8 @@ ss -lntp | grep ":${APP_PORT:-3000}"
 
 日志里应该能看到服务监听在 `http://0.0.0.0:3000/`。如果容器内能访问、服务器本机 `curl` 也能访问，但浏览器访问 `http://服务器IP:端口/` 不通，请在云服务器安全组和系统防火墙放行对应端口。
 
+`docker-compose.yml` 已设置 `CLOUDFLARE_CF_FETCH_ENABLED=false`，避免 Miniflare 启动时因服务器无法访问 `workers.cloudflare.com/cf.json` 而等待超时；这个 `Request.cf` 占位信息不影响接码业务。
+
 ## 后台设置
 
 进入 `/admin` 后可以设置：
