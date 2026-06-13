@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { ensureSchema, getDb } from "@/db";
-import { serviceConfigs } from "@/db/schema";
+import { serviceConfigs } from "@/db/schema.mysql";
 import {
   cleanInt,
   cleanText,
@@ -51,11 +51,19 @@ export async function PATCH(request: Request, context: RouteContext) {
     updates.enabled = payload.enabled ? 1 : 0;
   }
 
-  const [config] = await getDb()
+  const db = getDb();
+  const configId = cleanInt(id);
+
+  await db
     .update(serviceConfigs)
     .set(updates)
-    .where(eq(serviceConfigs.id, cleanInt(id)))
-    .returning();
+    .where(eq(serviceConfigs.id, configId));
+
+  const [config] = await db
+    .select()
+    .from(serviceConfigs)
+    .where(eq(serviceConfigs.id, configId))
+    .limit(1);
 
   if (!config) return fail("配置不存在。", 404);
   return ok({ config });

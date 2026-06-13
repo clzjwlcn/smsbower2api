@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { ensureSchema, getDb, getRuntimeEnv } from "@/db";
-import { appSettings } from "@/db/schema";
+import { appSettings } from "@/db/schema.mysql";
 import { cleanText, nowIso } from "./server";
 
 export const DEFAULT_SMSBOWER_API_BASE_URL =
@@ -35,24 +35,18 @@ export async function setStoredSetting(key: string, value: string) {
 
   const db = getDb();
   const now = nowIso();
-  const existing = await getStoredSetting(key);
-
-  if (existing || existing === "") {
-    const [updated] = await db
-      .update(appSettings)
-      .set({ value, updatedAt: now })
-      .where(eq(appSettings.key, key))
-      .returning();
-
-    if (updated) return updated;
-  }
-
-  const [created] = await db
+  await db
     .insert(appSettings)
     .values({ key, value, updatedAt: now })
-    .returning();
+    .onDuplicateKeyUpdate({ set: { value, updatedAt: now } });
 
-  return created;
+  const [row] = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, key))
+    .limit(1);
+
+  return row;
 }
 
 export async function getSmsBowerSettings() {

@@ -1,5 +1,6 @@
+import { desc, inArray } from "drizzle-orm";
 import { ensureSchema, getDb } from "@/db";
-import { accessCards } from "@/db/schema";
+import { accessCards } from "@/db/schema.mysql";
 import {
   cleanInt,
   cleanText,
@@ -64,6 +65,18 @@ export async function POST(request: Request) {
     updatedAt: now,
   }));
 
-  const cards = await db.insert(accessCards).values(rows).returning();
+  await db.insert(accessCards).values(rows);
+
+  const cards = await db
+    .select()
+    .from(accessCards)
+    .where(
+      inArray(
+        accessCards.code,
+        rows.map((row) => row.code)
+      )
+    )
+    .orderBy(desc(accessCards.createdAt));
+
   return ok({ cards }, { status: 201 });
 }

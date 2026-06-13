@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { accessCards, activationOrders } from "@/db/schema";
+import { accessCards, activationOrders } from "@/db/schema.mysql";
 import {
   getCardContext,
   getCardProblem,
@@ -47,23 +47,27 @@ export async function POST(request: Request) {
 
     const db = getDb();
     const now = nowIso();
+    await db.insert(activationOrders).values({
+      cardId: row.card.id,
+      activationId: number.activationId,
+      phoneNumber: number.phoneNumber,
+      serviceCode: row.config.serviceCode,
+      serviceName: row.config.serviceName,
+      countryCode: row.config.countryCode,
+      countryName: row.config.countryName,
+      activationCost: number.activationCost ?? "",
+      status: "waiting_sms",
+      upstreamStatus: "ACCESS_NUMBER",
+      smsText: "",
+      createdAt: now,
+      updatedAt: now,
+    });
+
     const [order] = await db
-      .insert(activationOrders)
-      .values({
-        cardId: row.card.id,
-        activationId: number.activationId,
-        phoneNumber: number.phoneNumber,
-        serviceCode: row.config.serviceCode,
-        serviceName: row.config.serviceName,
-        countryCode: row.config.countryCode,
-        countryName: row.config.countryName,
-        activationCost: number.activationCost ?? "",
-        status: "waiting_sms",
-        upstreamStatus: "ACCESS_NUMBER",
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+      .select()
+      .from(activationOrders)
+      .where(eq(activationOrders.activationId, number.activationId))
+      .limit(1);
 
     await db
       .update(accessCards)

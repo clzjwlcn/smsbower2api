@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { activationOrders } from "@/db/schema";
+import { activationOrders } from "@/db/schema.mysql";
 import { getCardContext } from "@/lib/cards";
 import { getSmsBowerStatus } from "@/lib/smsbower";
 import {
@@ -68,11 +68,16 @@ export async function POST(request: Request, context: RouteContext) {
             updatedAt: nowIso(),
           };
 
-    const [updated] = await db
+    await db
       .update(activationOrders)
       .set(update)
+      .where(eq(activationOrders.id, order.id));
+
+    const [updated] = await db
+      .select()
+      .from(activationOrders)
       .where(eq(activationOrders.id, order.id))
-      .returning();
+      .limit(1);
 
     return ok({ order: updated });
   } catch (error) {

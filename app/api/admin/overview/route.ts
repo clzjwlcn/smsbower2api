@@ -1,6 +1,10 @@
 import { desc, eq } from "drizzle-orm";
 import { ensureSchema, getDb } from "@/db";
-import { accessCards, activationOrders, serviceConfigs } from "@/db/schema";
+import {
+  accessCards,
+  activationOrders,
+  serviceConfigs,
+} from "@/db/schema.mysql";
 import { getSmsBowerBalance } from "@/lib/smsbower";
 import { ok, requireAdmin } from "@/lib/server";
 

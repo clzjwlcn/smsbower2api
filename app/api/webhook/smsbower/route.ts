@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { ensureSchema, getDb, getRuntimeEnv } from "@/db";
-import { activationOrders, webhookEvents } from "@/db/schema";
+import { activationOrders, webhookEvents } from "@/db/schema.mysql";
 import { cleanText, fail, getClientIp, nowIso, ok } from "@/lib/server";
 
 type SmsBowerWebhookPayload = {
@@ -92,13 +92,14 @@ export async function POST(request: Request) {
     })
     .where(eq(activationOrders.id, order.id));
 
-  await db.insert(webhookEvents).values({
-    activationId,
-    payload: JSON.stringify(payload),
-    processed: 1,
-    sourceIp,
-    createdAt: now,
-  });
+    await db.insert(webhookEvents).values({
+      activationId,
+      payload: JSON.stringify(payload),
+      processed: 1,
+      error: "",
+      sourceIp,
+      createdAt: now,
+    });
 
   return ok({ ok: true, processed: true });
 }

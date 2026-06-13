@@ -1,5 +1,6 @@
+import { and, eq } from "drizzle-orm";
 import { ensureSchema, getDb } from "@/db";
-import { serviceConfigs } from "@/db/schema";
+import { serviceConfigs } from "@/db/schema.mysql";
 import {
   cleanText,
   fail,
@@ -39,20 +40,28 @@ export async function POST(request: Request) {
   const db = getDb();
 
   try {
+    await db.insert(serviceConfigs).values({
+      serviceCode,
+      serviceName,
+      countryCode,
+      countryName,
+      priceHint: cleanText(payload.priceHint),
+      note: cleanText(payload.note),
+      enabled: payload.enabled === false ? 0 : 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     const [config] = await db
-      .insert(serviceConfigs)
-      .values({
-        serviceCode,
-        serviceName,
-        countryCode,
-        countryName,
-        priceHint: cleanText(payload.priceHint),
-        note: cleanText(payload.note),
-        enabled: payload.enabled === false ? 0 : 1,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+      .select()
+      .from(serviceConfigs)
+      .where(
+        and(
+          eq(serviceConfigs.serviceCode, serviceCode),
+          eq(serviceConfigs.countryCode, countryCode)
+        )
+      )
+      .limit(1);
 
     return ok({ config }, { status: 201 });
   } catch (error) {

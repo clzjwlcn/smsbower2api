@@ -30,6 +30,13 @@ cd smsbower2api
 
 ```bash
 APP_PORT=3000
+APP_ALLOWED_HOSTS=true
+
+MYSQL_DATABASE=smsbower2api
+MYSQL_USER=smsbower
+MYSQL_PASSWORD=改成强密码
+MYSQL_ROOT_PASSWORD=改成另一个强密码
+DATABASE_URL=mysql://smsbower:改成强密码@mysql:3306/smsbower2api
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=asd123321
@@ -46,7 +53,16 @@ SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
 ### 4. 一键启动
 
 ```bash
+sh scripts/deploy-mysql.sh
+```
+
+这个脚本会自动拉取最新代码、启动 `smsbower2api` 和 `mysql` 两个容器、创建 MySQL 表，并尝试把旧版 `.wrangler` D1 数据导入 MySQL。
+
+也可以手动启动：
+
+```bash
 docker compose up -d --build
+docker compose exec -T smsbower2api npm run db:migrate:d1-to-mysql
 ```
 
 `docker-compose.yml` 默认使用 Docker Hub 镜像源代理拉取 Node 基础镜像，并使用 npmmirror 安装 npm 依赖，适合国内/宝塔服务器。如果服务器能直连 Docker Hub，也可以改 `.env`：
@@ -160,13 +176,27 @@ SMSBower 官方 Webhook 来源 IP：
 
 ## 数据持久化
 
-Docker Compose 会把本地 D1 数据保存到 Docker volume：
+Docker Compose 默认使用 MySQL 保存数据，数据保存在 Docker volume：
+
+```text
+smsbower2api_mysql
+```
+
+卡密、订单、后台设置、公告都会保存在这个 volume 中。
+
+旧版本使用的 D1/Miniflare 数据仍会保留在：
 
 ```text
 smsbower2api_wrangler
 ```
 
-卡密、订单、后台设置、公告都会保存在这个 volume 中。
+升级到 MySQL 后可以执行一次迁移：
+
+```bash
+docker compose exec -T smsbower2api npm run db:migrate:d1-to-mysql
+```
+
+迁移脚本会自动扫描 `/app/.wrangler/state/v3/d1` 下的 SQLite 数据库，并把 `service_configs`、`access_cards`、`activation_orders`、`webhook_events`、`app_settings` 导入 MySQL。重复执行会跳过已存在记录。
 
 停止容器但保留数据：
 
@@ -184,7 +214,7 @@ docker compose down -v
 
 ```bash
 git pull
-docker compose up -d --build
+sh scripts/deploy-mysql.sh
 ```
 
 ## 常用命令

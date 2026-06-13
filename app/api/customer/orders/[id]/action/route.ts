@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { accessCards, activationOrders } from "@/db/schema";
+import { accessCards, activationOrders } from "@/db/schema.mysql";
 import { getCardContext } from "@/lib/cards";
 import { setSmsBowerStatus } from "@/lib/smsbower";
 import {
@@ -66,7 +66,7 @@ export async function POST(request: Request, context: RouteContext) {
     const raw = await setSmsBowerStatus(order.activationId, selected.upstream);
     const now = nowIso();
 
-    const [updated] = await db
+    await db
       .update(activationOrders)
       .set({
         status: selected.local,
@@ -74,14 +74,19 @@ export async function POST(request: Request, context: RouteContext) {
         refundedAt: action === "cancel" && !order.refundedAt ? now : order.refundedAt,
         updatedAt: now,
       })
+      .where(eq(activationOrders.id, order.id));
+
+    const [updated] = await db
+      .select()
+      .from(activationOrders)
       .where(eq(activationOrders.id, order.id))
-      .returning();
+      .limit(1);
 
     if (action === "cancel" && !order.refundedAt) {
       await db
         .update(accessCards)
         .set({
-          quotaUsed: sql`MAX(${accessCards.quotaUsed} - ${order.chargedUnits}, 0)`,
+          quotaUsed: sql`GREATEST(${accessCards.quotaUsed} - ${order.chargedUnits}, 0)`,
           updatedAt: now,
         })
         .where(eq(accessCards.id, row.card.id));

@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { ensureSchema, getDb } from "@/db";
-import { accessCards, activationOrders, serviceConfigs } from "@/db/schema";
+import { accessCards, activationOrders, serviceConfigs } from "@/db/schema.mysql";
 
 export function remainingQuota(card: {
   quotaTotal: number;

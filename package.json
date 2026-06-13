@@ -10,10 +10,12 @@
     "build": "vinext build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:d1-to-mysql": "node scripts/migrate-d1-to-mysql.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
+    "mysql2": "^3.22.5",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"
