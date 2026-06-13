@@ -7,6 +7,8 @@ export type RuntimeEnv = typeof env & {
   SMSBOWER_API_KEY?: string;
   SMSBOWER_API_BASE_URL?: string;
   ADMIN_TOKEN?: string;
+  ADMIN_USERNAME?: string;
+  ADMIN_PASSWORD?: string;
   SMSBOWER_WEBHOOK_SECRET?: string;
   SMSBOWER_WEBHOOK_ALLOWED_IPS?: string;
 };

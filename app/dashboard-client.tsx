@@ -78,7 +78,10 @@ type AdminOverview = {
 };
 
 type ApiOptions = RequestInit & {
-  adminToken?: string;
+  adminAuth?: {
+    username: string;
+    password: string;
+  };
 };
 
 const statusLabels: Record<string, string> = {
@@ -94,8 +97,9 @@ async function api<T>(url: string, options: ApiOptions = {}) {
   const headers = new Headers(options.headers);
   headers.set("content-type", "application/json");
 
-  if (options.adminToken) {
-    headers.set("x-admin-token", options.adminToken);
+  if (options.adminAuth) {
+    headers.set("x-admin-username", options.adminAuth.username);
+    headers.set("x-admin-password", options.adminAuth.password);
   }
 
   const response = await fetch(url, { ...options, headers });
@@ -191,11 +195,12 @@ export default function DashboardClient() {
   const [session, setSession] = useState<Session | null>(null);
   const [clientMessage, setClientMessage] = useState("");
   const [clientBusy, setClientBusy] = useState(false);
-  const [adminToken, setAdminToken] = useState(() =>
+  const [adminUsername, setAdminUsername] = useState(() =>
     typeof window === "undefined"
       ? ""
-      : (localStorage.getItem("smsbower-admin-token") ?? "")
+      : (localStorage.getItem("smsbower-admin-username") ?? "admin")
   );
+  const [adminPassword, setAdminPassword] = useState("");
   const [admin, setAdmin] = useState<AdminOverview | null>(null);
   const [adminMessage, setAdminMessage] = useState("");
   const [adminBusy, setAdminBusy] = useState(false);
@@ -295,17 +300,21 @@ export default function DashboardClient() {
     setClientMessage("已复制。");
   }
 
-  async function loadAdmin(token = adminToken) {
+  function getAdminAuth() {
+    return { username: adminUsername.trim(), password: adminPassword };
+  }
+
+  async function loadAdmin() {
     setAdminBusy(true);
     setAdminMessage("");
     try {
       const data = await api<AdminOverview>("/api/admin/overview", {
         method: "GET",
-        adminToken: token,
+        adminAuth: getAdminAuth(),
       });
       setAdmin(data);
       setAdminMessage("后台已刷新。");
-      localStorage.setItem("smsbower-admin-token", token);
+      localStorage.setItem("smsbower-admin-username", adminUsername.trim());
     } catch (error) {
       setAdmin(null);
       setAdminMessage(error instanceof Error ? error.message : "后台加载失败。");
@@ -320,10 +329,10 @@ export default function DashboardClient() {
     try {
       await api<{ config: Config }>("/api/admin/configs", {
         method: "POST",
-        adminToken,
+        adminAuth: getAdminAuth(),
         body: JSON.stringify(configForm),
       });
-      await loadAdmin(adminToken);
+      await loadAdmin();
       setAdminMessage("配置已创建。");
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "配置创建失败。");
@@ -337,10 +346,10 @@ export default function DashboardClient() {
     try {
       await api<{ config: Config }>(`/api/admin/configs/${config.id}`, {
         method: "PATCH",
-        adminToken,
+        adminAuth: getAdminAuth(),
         body: JSON.stringify({ enabled: config.enabled ? 0 : 1 }),
       });
-      await loadAdmin(adminToken);
+      await loadAdmin();
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "配置更新失败。");
     } finally {
@@ -354,10 +363,10 @@ export default function DashboardClient() {
     try {
       const data = await api<{ cards: AdminCard[] }>("/api/admin/cards", {
         method: "POST",
-        adminToken,
+        adminAuth: getAdminAuth(),
         body: JSON.stringify(cardForm),
       });
-      await loadAdmin(adminToken);
+      await loadAdmin();
       setAdminMessage(`已生成 ${data.cards.length} 张卡密。`);
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "卡密生成失败。");
@@ -561,12 +570,17 @@ export default function DashboardClient() {
               <section className="rounded-lg border border-slate-300 bg-white p-5">
                 <div className="grid gap-3">
                   <Field
-                    label="后台 Token"
-                    type="password"
-                    value={adminToken}
-                    onChange={setAdminToken}
+                    label="管理员账号"
+                    value={adminUsername}
+                    onChange={setAdminUsername}
                   />
-                  <Button disabled={adminBusy} onClick={() => loadAdmin(adminToken)}>
+                  <Field
+                    label="管理员密码"
+                    type="password"
+                    value={adminPassword}
+                    onChange={setAdminPassword}
+                  />
+                  <Button disabled={adminBusy} onClick={loadAdmin}>
                     进入后台
                   </Button>
                 </div>

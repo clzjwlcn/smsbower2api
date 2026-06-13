@@ -35,10 +35,24 @@ export function nowIso() {
 }
 
 export function requireAdmin(request: Request) {
-  const token = cleanText(getRuntimeEnv().ADMIN_TOKEN);
+  const runtimeEnv = getRuntimeEnv();
+  const token = cleanText(runtimeEnv.ADMIN_TOKEN);
+  const expectedUsername = cleanText(runtimeEnv.ADMIN_USERNAME);
+  const expectedPassword = cleanText(runtimeEnv.ADMIN_PASSWORD);
+  const suppliedUsername = cleanText(request.headers.get("x-admin-username"));
+  const suppliedPassword = cleanText(request.headers.get("x-admin-password"));
 
-  if (!token) {
-    return fail("后台 ADMIN_TOKEN 尚未配置。", 500);
+  if (expectedUsername && expectedPassword) {
+    if (
+      suppliedUsername === expectedUsername &&
+      suppliedPassword === expectedPassword
+    ) {
+      return null;
+    }
+
+    if (suppliedUsername || suppliedPassword) {
+      return fail("后台账号或密码不正确。", 401);
+    }
   }
 
   const supplied =
@@ -46,11 +60,15 @@ export function requireAdmin(request: Request) {
     new URL(request.url).searchParams.get("admin_token") ??
     "";
 
-  if (supplied !== token) {
-    return fail("后台 token 不正确。", 401);
+  if (token && supplied === token) {
+    return null;
   }
 
-  return null;
+  if (!expectedUsername && !expectedPassword && !token) {
+    return fail("后台账号密码尚未配置。", 500);
+  }
+
+  return fail("后台账号或密码不正确。", 401);
 }
 
 export function getClientIp(request: Request) {
