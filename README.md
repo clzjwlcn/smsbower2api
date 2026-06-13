@@ -49,6 +49,13 @@ SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
 docker compose up -d --build
 ```
 
+`docker-compose.yml` 默认使用 Docker Hub 镜像源代理拉取 Node 基础镜像，并使用 npmmirror 安装 npm 依赖，适合国内/宝塔服务器。如果服务器能直连 Docker Hub，也可以改 `.env`：
+
+```bash
+NODE_IMAGE=node:22-bookworm-slim
+NPM_REGISTRY=https://registry.npmjs.org
+```
+
 访问地址：
 
 - 前台：`http://服务器IP:3000/`
@@ -93,6 +100,12 @@ ss -lntp | grep ":${APP_PORT:-3000}"
 日志里应该能看到服务监听在 `http://0.0.0.0:3000/`。如果容器内能访问、服务器本机 `curl` 也能访问，但浏览器访问 `http://服务器IP:端口/` 不通，请在云服务器安全组和系统防火墙放行对应端口。
 
 `docker-compose.yml` 已设置 `CLOUDFLARE_CF_FETCH_ENABLED=false`，避免 Miniflare 启动时因服务器无法访问 `workers.cloudflare.com/cf.json` 而等待超时；这个 `Request.cf` 占位信息不影响接码业务。
+
+如果仍然构建失败，运行部署诊断：
+
+```bash
+sh scripts/doctor.sh
+```
 
 ## 后台设置
 

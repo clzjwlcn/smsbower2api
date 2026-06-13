@@ -1,4 +1,5 @@
-FROM node:22-bookworm-slim
+ARG NODE_IMAGE=node:22-bookworm-slim
+FROM ${NODE_IMAGE}
 
 WORKDIR /app
 
@@ -6,8 +7,10 @@ ENV NODE_ENV=development \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000
 
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --registry=${NPM_REGISTRY}
 
 COPY . .
 
