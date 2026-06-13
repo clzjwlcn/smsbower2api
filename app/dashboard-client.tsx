@@ -2,7 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Order = {
   id: number;
@@ -84,6 +84,15 @@ type AdminSettings = {
   apiKeyPreview: string;
   apiKeySource: string;
   defaultApiBaseUrl: string;
+  announcementEnabled: boolean;
+  announcementTitle: string;
+  announcementBody: string;
+};
+
+type Announcement = {
+  enabled: boolean;
+  title: string;
+  body: string;
 };
 
 type ApiOptions = RequestInit & {
@@ -166,6 +175,30 @@ function Field({
   );
 }
 
+function TextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="grid gap-1 text-sm text-slate-600">
+      <span>{label}</span>
+      <textarea
+        className="min-h-28 resize-y rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
 function Button({
   children,
   onClick,
@@ -206,6 +239,7 @@ export default function DashboardClient({
   const [tab] = useState<"client" | "admin">(adminOnly ? "admin" : "client");
   const [cardCode, setCardCode] = useState("");
   const [session, setSession] = useState<Session | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [clientMessage, setClientMessage] = useState("");
   const [clientBusy, setClientBusy] = useState(false);
   const [adminUsername, setAdminUsername] = useState(() =>
@@ -240,12 +274,37 @@ export default function DashboardClient({
   const [settingsForm, setSettingsForm] = useState({
     apiBaseUrl: "https://smsbower.page/stubs/handler_api.php",
     apiKey: "",
+    announcementEnabled: false,
+    announcementTitle: "",
+    announcementBody: "",
   });
 
   const webhookUrl = useMemo(() => {
     if (!origin) return "/api/webhook/smsbower";
     return `${origin}/api/webhook/smsbower`;
   }, [origin]);
+
+  useEffect(() => {
+    if (adminOnly) return;
+
+    let cancelled = false;
+    fetch("/api/public/announcement")
+      .then((response) => response.json())
+      .then((data: { announcement?: Announcement }) => {
+        if (!cancelled) {
+          setAnnouncement(data.announcement ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAnnouncement(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminOnly]);
 
   async function loadSession(nextCardCode = cardCode) {
     setClientBusy(true);
@@ -341,6 +400,9 @@ export default function DashboardClient({
       setSettingsForm({
         apiBaseUrl: settingsData.settings.apiBaseUrl,
         apiKey: "",
+        announcementEnabled: settingsData.settings.announcementEnabled,
+        announcementTitle: settingsData.settings.announcementTitle,
+        announcementBody: settingsData.settings.announcementBody,
       });
       setAdminMessage("后台已刷新。");
       localStorage.setItem("smsbower-admin-username", adminUsername.trim());
@@ -363,7 +425,13 @@ export default function DashboardClient({
         body: JSON.stringify(settingsForm),
       });
       setAdminSettings(data.settings);
-      setSettingsForm({ apiBaseUrl: data.settings.apiBaseUrl, apiKey: "" });
+      setSettingsForm({
+        apiBaseUrl: data.settings.apiBaseUrl,
+        apiKey: "",
+        announcementEnabled: data.settings.announcementEnabled,
+        announcementTitle: data.settings.announcementTitle,
+        announcementBody: data.settings.announcementBody,
+      });
       await loadAdmin();
       setAdminMessage("API 设置已保存。");
     } catch (error) {
@@ -450,6 +518,17 @@ export default function DashboardClient({
             </Link>
           ) : null}
         </header>
+
+        {!adminOnly && announcement?.enabled && announcement.body ? (
+          <section className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-amber-950">
+            {announcement.title ? (
+              <h2 className="text-sm font-semibold">{announcement.title}</h2>
+            ) : null}
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
+              {announcement.body}
+            </p>
+          </section>
+        ) : null}
 
         {tab === "client" ? (
           <section className="grid gap-5 lg:grid-cols-[380px_1fr]">
@@ -709,6 +788,45 @@ export default function DashboardClient({
                   <p>当前 Key：{adminSettings?.apiKeyPreview || "未设置"}</p>
                   <p>来源：{adminSettings?.apiKeySource || "--"}</p>
                 </div>
+                <div className="border-t border-slate-200 pt-3">
+                  <h3 className="text-sm font-semibold text-slate-900">首页公告</h3>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      checked={settingsForm.announcementEnabled}
+                      className="h-4 w-4 accent-teal-700"
+                      type="checkbox"
+                      onChange={(event) =>
+                        setSettingsForm((form) => ({
+                          ...form,
+                          announcementEnabled: event.target.checked,
+                        }))
+                      }
+                    />
+                    启用公告栏
+                  </label>
+                </div>
+                <Field
+                  label="公告标题"
+                  placeholder="例如：最新通知"
+                  value={settingsForm.announcementTitle}
+                  onChange={(value) =>
+                    setSettingsForm((form) => ({
+                      ...form,
+                      announcementTitle: value,
+                    }))
+                  }
+                />
+                <TextArea
+                  label="公告内容"
+                  placeholder="填写要展示在首页的公告内容"
+                  value={settingsForm.announcementBody}
+                  onChange={(value) =>
+                    setSettingsForm((form) => ({
+                      ...form,
+                      announcementBody: value,
+                    }))
+                  }
+                />
                 <Button disabled={adminBusy} type="submit">
                   保存接口设置
                 </Button>

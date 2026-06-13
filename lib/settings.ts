@@ -8,6 +8,9 @@ export const DEFAULT_SMSBOWER_API_BASE_URL =
 
 const API_BASE_URL_KEY = "smsbower_api_base_url";
 const API_KEY_KEY = "smsbower_api_key";
+const ANNOUNCEMENT_ENABLED_KEY = "announcement_enabled";
+const ANNOUNCEMENT_TITLE_KEY = "announcement_title";
+const ANNOUNCEMENT_BODY_KEY = "announcement_body";
 
 function maskSecret(value: string) {
   if (!value) return "";
@@ -85,4 +88,34 @@ export async function updateSmsBowerSettings(values: {
   }
 
   return getSmsBowerSettings();
+}
+
+export async function getAnnouncementSettings() {
+  const enabled = cleanText(await getStoredSetting(ANNOUNCEMENT_ENABLED_KEY));
+  const title = cleanText(await getStoredSetting(ANNOUNCEMENT_TITLE_KEY));
+  const body = cleanText(await getStoredSetting(ANNOUNCEMENT_BODY_KEY));
+
+  return {
+    enabled: enabled === "1",
+    title,
+    body,
+  };
+}
+
+export async function updateAnnouncementSettings(values: {
+  enabled?: boolean | number | string;
+  title?: string;
+  body?: string;
+}) {
+  const enabled =
+    values.enabled === true ||
+    values.enabled === 1 ||
+    values.enabled === "1" ||
+    values.enabled === "true";
+
+  await setStoredSetting(ANNOUNCEMENT_ENABLED_KEY, enabled ? "1" : "0");
+  await setStoredSetting(ANNOUNCEMENT_TITLE_KEY, cleanText(values.title));
+  await setStoredSetting(ANNOUNCEMENT_BODY_KEY, cleanText(values.body));
+
+  return getAnnouncementSettings();
 }
