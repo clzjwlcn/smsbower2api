@@ -95,3 +95,9 @@ export const webhookEvents = sqliteTable(
   },
   (table) => [index("webhook_events_activation_idx").on(table.activationId)]
 );
+
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});

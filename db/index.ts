@@ -97,6 +97,11 @@ async function initializeSchema(db: D1Database) {
     db.prepare(
       "CREATE INDEX IF NOT EXISTS webhook_events_activation_idx ON webhook_events (activation_id)"
     ),
+    db.prepare(`CREATE TABLE IF NOT EXISTS app_settings (
+      key text PRIMARY KEY NOT NULL,
+      value text DEFAULT '' NOT NULL,
+      updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL
+    )`),
   ]);
 }
 

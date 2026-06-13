@@ -1,6 +1,4 @@
-import { getRuntimeEnv } from "@/db";
-
-const DEFAULT_API_BASE_URL = "https://smsbower.page/stubs/handler_api.php";
+import { getSmsBowerSettings } from "./settings";
 
 type SmsBowerParams = Record<string, string | number | undefined>;
 
@@ -22,25 +20,14 @@ export type SmsBowerStatus = {
   raw: string;
 };
 
-function getApiKey() {
-  return String(getRuntimeEnv().SMSBOWER_API_KEY ?? "").trim();
-}
-
-function getBaseUrl() {
-  return (
-    String(getRuntimeEnv().SMSBOWER_API_BASE_URL ?? "").trim() ||
-    DEFAULT_API_BASE_URL
-  );
-}
-
-function buildUrl(action: string, params: SmsBowerParams = {}) {
-  const apiKey = getApiKey();
+async function buildUrl(action: string, params: SmsBowerParams = {}) {
+  const { apiBaseUrl, apiKey } = await getSmsBowerSettings();
 
   if (!apiKey) {
-    throw new Error("SMSBOWER_API_KEY 尚未配置。");
+    throw new Error("SMSBower API Key 尚未配置，请先到后台设置。");
   }
 
-  const url = new URL(getBaseUrl());
+  const url = new URL(apiBaseUrl);
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("action", action);
 
@@ -54,7 +41,7 @@ function buildUrl(action: string, params: SmsBowerParams = {}) {
 }
 
 async function callText(action: string, params?: SmsBowerParams) {
-  const response = await fetch(buildUrl(action, params), {
+  const response = await fetch(await buildUrl(action, params), {
     headers: { accept: "application/json, text/plain;q=0.9, */*;q=0.8" },
   });
   const text = (await response.text()).trim();
@@ -169,4 +156,3 @@ export async function setSmsBowerStatus(activationId: string, status: number) {
   assertNotError(raw);
   return raw;
 }
-

@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type Order = {
@@ -75,6 +76,14 @@ type AdminOverview = {
   orders: Order[];
   upstreamBalance: { balance: string; raw: string } | null;
   upstreamError: string;
+};
+
+type AdminSettings = {
+  apiBaseUrl: string;
+  apiKeyConfigured: boolean;
+  apiKeyPreview: string;
+  apiKeySource: string;
+  defaultApiBaseUrl: string;
 };
 
 type ApiOptions = RequestInit & {
@@ -189,8 +198,12 @@ function Button({
   );
 }
 
-export default function DashboardClient() {
-  const [tab, setTab] = useState<"client" | "admin">("client");
+export default function DashboardClient({
+  adminOnly = false,
+}: {
+  adminOnly?: boolean;
+}) {
+  const [tab] = useState<"client" | "admin">(adminOnly ? "admin" : "client");
   const [cardCode, setCardCode] = useState("");
   const [session, setSession] = useState<Session | null>(null);
   const [clientMessage, setClientMessage] = useState("");
@@ -202,6 +215,7 @@ export default function DashboardClient() {
   );
   const [adminPassword, setAdminPassword] = useState("");
   const [admin, setAdmin] = useState<AdminOverview | null>(null);
+  const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
   const [adminMessage, setAdminMessage] = useState("");
   const [adminBusy, setAdminBusy] = useState(false);
   const [origin] = useState(() =>
@@ -222,6 +236,10 @@ export default function DashboardClient() {
     prefix: "SB",
     label: "",
     expiresAt: "",
+  });
+  const [settingsForm, setSettingsForm] = useState({
+    apiBaseUrl: "https://smsbower.page/stubs/handler_api.php",
+    apiKey: "",
   });
 
   const webhookUrl = useMemo(() => {
@@ -308,16 +326,48 @@ export default function DashboardClient() {
     setAdminBusy(true);
     setAdminMessage("");
     try {
-      const data = await api<AdminOverview>("/api/admin/overview", {
-        method: "GET",
-        adminAuth: getAdminAuth(),
+      const [overview, settingsData] = await Promise.all([
+        api<AdminOverview>("/api/admin/overview", {
+          method: "GET",
+          adminAuth: getAdminAuth(),
+        }),
+        api<{ settings: AdminSettings }>("/api/admin/settings", {
+          method: "GET",
+          adminAuth: getAdminAuth(),
+        }),
+      ]);
+      setAdmin(overview);
+      setAdminSettings(settingsData.settings);
+      setSettingsForm({
+        apiBaseUrl: settingsData.settings.apiBaseUrl,
+        apiKey: "",
       });
-      setAdmin(data);
       setAdminMessage("后台已刷新。");
       localStorage.setItem("smsbower-admin-username", adminUsername.trim());
     } catch (error) {
       setAdmin(null);
+      setAdminSettings(null);
       setAdminMessage(error instanceof Error ? error.message : "后台加载失败。");
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAdminBusy(true);
+    try {
+      const data = await api<{ settings: AdminSettings }>("/api/admin/settings", {
+        method: "PATCH",
+        adminAuth: getAdminAuth(),
+        body: JSON.stringify(settingsForm),
+      });
+      setAdminSettings(data.settings);
+      setSettingsForm({ apiBaseUrl: data.settings.apiBaseUrl, apiKey: "" });
+      await loadAdmin();
+      setAdminMessage("API 设置已保存。");
+    } catch (error) {
+      setAdminMessage(error instanceof Error ? error.message : "API 设置保存失败。");
     } finally {
       setAdminBusy(false);
     }
@@ -384,25 +434,21 @@ export default function DashboardClient() {
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6">
         <header className="flex flex-col gap-4 border-b border-slate-300 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm text-slate-500">SMSBower 接码网关</p>
-            <h1 className="mt-1 text-3xl font-semibold">卡密取号与短信回调后台</h1>
+            <p className="text-sm text-slate-500">
+              {adminOnly ? "SMSBower 后台" : "SMSBower 接码网关"}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold">
+              {adminOnly ? "后台管理" : "卡密取号与短信回调"}
+            </h1>
           </div>
-          <div className="inline-flex w-fit rounded border border-slate-300 bg-white p-1">
-            <button
-              className={`h-9 rounded px-4 text-sm ${tab === "client" ? "bg-slate-900 text-white" : "text-slate-700"}`}
-              onClick={() => setTab("client")}
-              type="button"
+          {adminOnly ? (
+            <Link
+              className="inline-flex h-10 w-fit items-center rounded border border-slate-300 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50"
+              href="/"
             >
-              用户取号
-            </button>
-            <button
-              className={`h-9 rounded px-4 text-sm ${tab === "admin" ? "bg-slate-900 text-white" : "text-slate-700"}`}
-              onClick={() => setTab("admin")}
-              type="button"
-            >
-              后台管理
-            </button>
-          </div>
+              返回取号页
+            </Link>
+          ) : null}
         </header>
 
         {tab === "client" ? (
@@ -564,32 +610,109 @@ export default function DashboardClient() {
               )}
             </section>
           </section>
+        ) : !admin ? (
+          <section className="grid min-h-[520px] place-items-center">
+            <form
+              className="grid w-full max-w-md gap-4 rounded-lg border border-slate-300 bg-white p-6"
+              onSubmit={(event) => {
+                event.preventDefault();
+                loadAdmin();
+              }}
+            >
+              <div>
+                <h2 className="text-xl font-semibold">后台登录</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  输入管理员账号和密码后进入设置。
+                </p>
+              </div>
+              <Field
+                label="管理员账号"
+                value={adminUsername}
+                onChange={setAdminUsername}
+              />
+              <Field
+                label="管理员密码"
+                type="password"
+                value={adminPassword}
+                onChange={setAdminPassword}
+              />
+              <Button disabled={adminBusy} type="submit">
+                登录
+              </Button>
+              {adminMessage && (
+                <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {adminMessage}
+                </p>
+              )}
+            </form>
+          </section>
         ) : (
           <section className="grid gap-5 xl:grid-cols-[380px_1fr]">
             <aside className="grid gap-5">
-              <section className="rounded-lg border border-slate-300 bg-white p-5">
-                <div className="grid gap-3">
-                  <Field
-                    label="管理员账号"
-                    value={adminUsername}
-                    onChange={setAdminUsername}
-                  />
-                  <Field
-                    label="管理员密码"
-                    type="password"
-                    value={adminPassword}
-                    onChange={setAdminPassword}
-                  />
-                  <Button disabled={adminBusy} onClick={loadAdmin}>
-                    进入后台
-                  </Button>
+              <section className="grid gap-3 rounded-lg border border-slate-300 bg-white p-5">
+                <div>
+                  <h2 className="text-lg font-semibold">管理员</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    当前账号：{adminUsername}
+                  </p>
                 </div>
+                <Button
+                  disabled={adminBusy}
+                  onClick={() => {
+                    setAdmin(null);
+                    setAdminSettings(null);
+                    setAdminPassword("");
+                    setAdminMessage("已退出后台。");
+                  }}
+                  variant="secondary"
+                >
+                  退出登录
+                </Button>
                 {adminMessage && (
-                  <p className="mt-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                     {adminMessage}
                   </p>
                 )}
               </section>
+
+              <form
+                className="grid gap-3 rounded-lg border border-slate-300 bg-white p-5"
+                onSubmit={saveSettings}
+              >
+                <div>
+                  <h2 className="text-lg font-semibold">接口设置</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    SMSBower API Key 和请求地址。
+                  </p>
+                </div>
+                <Field
+                  label="API 地址"
+                  value={settingsForm.apiBaseUrl}
+                  onChange={(value) =>
+                    setSettingsForm((form) => ({ ...form, apiBaseUrl: value }))
+                  }
+                />
+                <Field
+                  label="API Key"
+                  type="password"
+                  placeholder={
+                    adminSettings?.apiKeyConfigured
+                      ? "留空则保持当前 API Key"
+                      : "请输入 SMSBower API Key"
+                  }
+                  value={settingsForm.apiKey}
+                  onChange={(value) =>
+                    setSettingsForm((form) => ({ ...form, apiKey: value }))
+                  }
+                />
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <p>当前 Key：{adminSettings?.apiKeyPreview || "未设置"}</p>
+                  <p>来源：{adminSettings?.apiKeySource || "--"}</p>
+                </div>
+                <Button disabled={adminBusy} type="submit">
+                  保存接口设置
+                </Button>
+              </form>
 
               <form
                 className="grid gap-3 rounded-lg border border-slate-300 bg-white p-5"
