@@ -1,70 +1,178 @@
-# vinext-starter
+# SMSBower2API 接码网关
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+这是一个对接 SMSBower 的卡密接码网站，包含前台取号页和后台管理页。
 
-## Prerequisites
+- 前台：输入卡密、验证额度、获取手机号、刷新验证码、取消并退额度。
+- 后台：生成卡密、设置服务/国家、设置 SMSBower API Key、设置首页公告。
+- Webhook：接收 SMSBower 短信推送并按 `activationId` 写回验证码。
 
-- Node.js `>=22.13.0`
+## 一键 Docker 部署
 
-## Quick Start
+### 1. 准备服务器
+
+服务器需要安装 Docker 和 Docker Compose。
+
+```bash
+docker --version
+docker compose version
+```
+
+### 2. 拉取代码
+
+```bash
+git clone https://github.com/clzjwlcn/smsbower2api.git
+cd smsbower2api
+```
+
+### 3. 创建配置文件
+
+在项目目录创建 `.env`：
+
+```bash
+APP_PORT=3000
+
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=asd123321
+
+SMSBOWER_API_BASE_URL=https://smsbower.page/stubs/handler_api.php
+SMSBOWER_API_KEY=你的_smsbower_api_key
+
+SMSBOWER_WEBHOOK_SECRET=改成一串随机字符
+SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205
+```
+
+建议上线后立刻修改 `ADMIN_PASSWORD` 和 `SMSBOWER_WEBHOOK_SECRET`。
+
+### 4. 一键启动
+
+```bash
+docker compose up -d --build
+```
+
+访问地址：
+
+- 前台：`http://服务器IP:3000/`
+- 后台：`http://服务器IP:3000/admin`
+
+默认后台账号密码：
+
+```text
+账号：admin
+密码：asd123321
+```
+
+如果你在 `.env` 中修改了端口，例如 `APP_PORT=8080`，访问地址就是：
+
+```text
+http://服务器IP:8080/
+http://服务器IP:8080/admin
+```
+
+## 后台设置
+
+进入 `/admin` 后可以设置：
+
+- SMSBower API 地址
+- SMSBower API Key
+- 首页公告栏标题、内容、开关
+- 服务代码和国家代码
+- 卡密数量、额度、前缀、过期时间
+
+SMSBower API 请求地址默认是：
+
+```text
+https://smsbower.page/stubs/handler_api.php
+```
+
+API Key 也可以不写在 `.env`，直接在后台“接口设置”里保存。
+
+## SMSBower Webhook
+
+在 SMSBower 个人资料里填写 Webhook 地址：
+
+```text
+http://服务器IP:3000/api/webhook/smsbower?secret=你的_SMSBOWER_WEBHOOK_SECRET
+```
+
+如果使用域名和 HTTPS：
+
+```text
+https://你的域名/api/webhook/smsbower?secret=你的_SMSBOWER_WEBHOOK_SECRET
+```
+
+SMSBower 官方 Webhook 来源 IP：
+
+```text
+167.235.198.205
+```
+
+如果你设置了 `SMSBOWER_WEBHOOK_ALLOWED_IPS=167.235.198.205`，服务端只接受这个 IP 的回调。
+
+## 数据持久化
+
+Docker Compose 会把本地 D1 数据保存到 Docker volume：
+
+```text
+smsbower2api_wrangler
+```
+
+卡密、订单、后台设置、公告都会保存在这个 volume 中。
+
+停止容器但保留数据：
+
+```bash
+docker compose down
+```
+
+删除容器和数据：
+
+```bash
+docker compose down -v
+```
+
+## 更新代码
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+## 常用命令
+
+查看运行状态：
+
+```bash
+docker compose ps
+```
+
+查看日志：
+
+```bash
+docker compose logs -f
+```
+
+重启：
+
+```bash
+docker compose restart
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+## 不使用 Docker 本地开发
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1 --port 3000
+```
+
+构建检查：
+
+```bash
+npm run lint
 npm run build
 ```
-
-This starter does not use `wrangler.jsonc`.
-
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)

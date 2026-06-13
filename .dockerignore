@@ -1,0 +1,16 @@
+.git
+.dev.vars
+.env
+.env.*
+!.env.example
+.npm-cache
+.vinext
+.wrangler
+dist
+node_modules
+outputs
+work
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
