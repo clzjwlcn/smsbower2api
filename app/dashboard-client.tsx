@@ -115,6 +115,7 @@ type ApiOptions = RequestInit & {
     username: string;
     password: string;
   };
+  timeoutMs?: number;
 };
 
 const statusLabels: Record<string, string> = {
@@ -127,22 +128,51 @@ const statusLabels: Record<string, string> = {
 };
 
 async function api<T>(url: string, options: ApiOptions = {}) {
-  const headers = new Headers(options.headers);
+  const { adminAuth, timeoutMs = 20000, ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers);
   headers.set("content-type", "application/json");
 
-  if (options.adminAuth) {
-    headers.set("x-admin-username", options.adminAuth.username);
-    headers.set("x-admin-password", options.adminAuth.password);
+  if (adminAuth) {
+    headers.set("x-admin-username", adminAuth.username);
+    headers.set("x-admin-password", adminAuth.password);
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...fetchOptions,
+      headers,
+      signal: fetchOptions.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("请求超时，请检查服务器是否正常运行。");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const data = (await response.json().catch(() => ({}))) as {
     error?: string;
     detail?: unknown;
   };
 
   if (!response.ok) {
-    throw new Error(data.error || "请求失败");
+    const detail =
+      typeof data.detail === "string"
+        ? data.detail
+        : data.detail
+          ? JSON.stringify(data.detail)
+          : "";
+    throw new Error(
+      `${data.error || "请求失败"}（HTTP ${response.status}${
+        detail ? `：${detail}` : ""
+      }）`
+    );
   }
 
   return data as T;
@@ -354,7 +384,7 @@ export default function DashboardClient({
 
   async function loadSession(nextCardCode = cardCode) {
     setClientBusy(true);
-    setClientMessage("");
+    setClientMessage("正在验证卡密...");
     try {
       const data = await api<Session>("/api/customer/session", {
         method: "POST",
@@ -686,7 +716,7 @@ export default function DashboardClient({
                   onChange={(value) => setCardCode(value.toUpperCase())}
                 />
                 <Button disabled={clientBusy} type="submit">
-                  验证额度
+                  {clientBusy ? "验证中" : "验证额度"}
                 </Button>
               </form>
 
