@@ -5,7 +5,7 @@ import { getSmsBowerBalance } from "@/lib/smsbower";
 import { ok, requireAdmin } from "@/lib/server";
 
 export async function GET(request: Request) {
-  const adminError = requireAdmin(request);
+  const adminError = await requireAdmin(request);
   if (adminError) return adminError;
 
   await ensureSchema();

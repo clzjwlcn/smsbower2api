@@ -38,7 +38,7 @@ function toSettingsResponse(
 }
 
 export async function GET(request: Request) {
-  const adminError = requireAdmin(request);
+  const adminError = await requireAdmin(request);
   if (adminError) return adminError;
 
   const [settings, announcement] = await Promise.all([
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const adminError = requireAdmin(request);
+  const adminError = await requireAdmin(request);
   if (adminError) return adminError;
 
   const payload = await readJson<SettingsPayload>(request);

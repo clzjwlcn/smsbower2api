@@ -89,6 +89,12 @@ type AdminSettings = {
   announcementBody: string;
 };
 
+type AdminAccount = {
+  username: string;
+  usernameSource: string;
+  passwordSource: string;
+};
+
 type Announcement = {
   enabled: boolean;
   title: string;
@@ -245,11 +251,18 @@ export default function DashboardClient({
   const [adminUsername, setAdminUsername] = useState(() =>
     typeof window === "undefined"
       ? ""
-      : (localStorage.getItem("smsbower-admin-username") ?? "admin")
+      : (sessionStorage.getItem("smsbower-admin-username") ??
+        localStorage.getItem("smsbower-admin-username") ??
+        "admin")
   );
-  const [adminPassword, setAdminPassword] = useState("");
+  const [adminPassword, setAdminPassword] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : (sessionStorage.getItem("smsbower-admin-password") ?? "")
+  );
   const [admin, setAdmin] = useState<AdminOverview | null>(null);
   const [adminSettings, setAdminSettings] = useState<AdminSettings | null>(null);
+  const [adminAccount, setAdminAccount] = useState<AdminAccount | null>(null);
   const [adminMessage, setAdminMessage] = useState("");
   const [adminBusy, setAdminBusy] = useState(false);
   const [origin] = useState(() =>
@@ -278,6 +291,11 @@ export default function DashboardClient({
     announcementTitle: "",
     announcementBody: "",
   });
+  const [accountForm, setAccountForm] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   const webhookUrl = useMemo(() => {
     if (!origin) return "/api/webhook/smsbower";
@@ -304,6 +322,23 @@ export default function DashboardClient({
     return () => {
       cancelled = true;
     };
+  }, [adminOnly]);
+
+  useEffect(() => {
+    if (!adminOnly || typeof window === "undefined") return;
+
+    const savedUsername = sessionStorage.getItem("smsbower-admin-username");
+    const savedPassword = sessionStorage.getItem("smsbower-admin-password");
+
+    if (!savedUsername || !savedPassword) return;
+
+    loadAdmin({
+      username: savedUsername,
+      password: savedPassword,
+      silent: true,
+    });
+    // Restore-on-refresh should run once from session storage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminOnly]);
 
   async function loadSession(nextCardCode = cardCode) {
@@ -377,26 +412,41 @@ export default function DashboardClient({
     setClientMessage("已复制。");
   }
 
-  function getAdminAuth() {
-    return { username: adminUsername.trim(), password: adminPassword };
+  function getAdminAuth(override?: { username?: string; password?: string }) {
+    return {
+      username: (override?.username ?? adminUsername).trim(),
+      password: override?.password ?? adminPassword,
+    };
   }
 
-  async function loadAdmin() {
+  async function loadAdmin(options?: {
+    username?: string;
+    password?: string;
+    silent?: boolean;
+  }) {
     setAdminBusy(true);
-    setAdminMessage("");
+    if (!options?.silent) {
+      setAdminMessage("");
+    }
     try {
-      const [overview, settingsData] = await Promise.all([
+      const adminAuth = getAdminAuth(options);
+      const [overview, settingsData, accountData] = await Promise.all([
         api<AdminOverview>("/api/admin/overview", {
           method: "GET",
-          adminAuth: getAdminAuth(),
+          adminAuth,
         }),
         api<{ settings: AdminSettings }>("/api/admin/settings", {
           method: "GET",
-          adminAuth: getAdminAuth(),
+          adminAuth,
+        }),
+        api<{ account: AdminAccount }>("/api/admin/account", {
+          method: "GET",
+          adminAuth,
         }),
       ]);
       setAdmin(overview);
       setAdminSettings(settingsData.settings);
+      setAdminAccount(accountData.account);
       setSettingsForm({
         apiBaseUrl: settingsData.settings.apiBaseUrl,
         apiKey: "",
@@ -404,11 +454,24 @@ export default function DashboardClient({
         announcementTitle: settingsData.settings.announcementTitle,
         announcementBody: settingsData.settings.announcementBody,
       });
-      setAdminMessage("后台已刷新。");
-      localStorage.setItem("smsbower-admin-username", adminUsername.trim());
+      setAccountForm({
+        username: accountData.account.username,
+        password: "",
+        confirmPassword: "",
+      });
+      setAdminUsername(adminAuth.username);
+      setAdminPassword(adminAuth.password);
+      if (!options?.silent) {
+        setAdminMessage("后台已刷新。");
+      }
+      localStorage.setItem("smsbower-admin-username", adminAuth.username);
+      sessionStorage.setItem("smsbower-admin-username", adminAuth.username);
+      sessionStorage.setItem("smsbower-admin-password", adminAuth.password);
     } catch (error) {
       setAdmin(null);
       setAdminSettings(null);
+      setAdminAccount(null);
+      sessionStorage.removeItem("smsbower-admin-password");
       setAdminMessage(error instanceof Error ? error.message : "后台加载失败。");
     } finally {
       setAdminBusy(false);
@@ -436,6 +499,39 @@ export default function DashboardClient({
       setAdminMessage("API 设置已保存。");
     } catch (error) {
       setAdminMessage(error instanceof Error ? error.message : "API 设置保存失败。");
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function saveAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAdminBusy(true);
+    try {
+      const data = await api<{ account: AdminAccount }>("/api/admin/account", {
+        method: "PATCH",
+        adminAuth: getAdminAuth(),
+        body: JSON.stringify(accountForm),
+      });
+      const nextUsername = data.account.username;
+      const nextPassword = accountForm.password || adminPassword;
+
+      setAdminAccount(data.account);
+      setAdminUsername(nextUsername);
+      setAdminPassword(nextPassword);
+      setAccountForm({
+        username: nextUsername,
+        password: "",
+        confirmPassword: "",
+      });
+      localStorage.setItem("smsbower-admin-username", nextUsername);
+      sessionStorage.setItem("smsbower-admin-username", nextUsername);
+      sessionStorage.setItem("smsbower-admin-password", nextPassword);
+      setAdminMessage("管理员账号设置已保存。");
+    } catch (error) {
+      setAdminMessage(
+        error instanceof Error ? error.message : "管理员账号设置保存失败。"
+      );
     } finally {
       setAdminBusy(false);
     }
@@ -740,7 +836,9 @@ export default function DashboardClient({
                   onClick={() => {
                     setAdmin(null);
                     setAdminSettings(null);
+                    setAdminAccount(null);
                     setAdminPassword("");
+                    sessionStorage.removeItem("smsbower-admin-password");
                     setAdminMessage("已退出后台。");
                   }}
                   variant="secondary"
@@ -753,6 +851,53 @@ export default function DashboardClient({
                   </p>
                 )}
               </section>
+
+              <form
+                className="grid gap-3 rounded-lg border border-slate-300 bg-white p-5"
+                onSubmit={saveAccount}
+              >
+                <div>
+                  <h2 className="text-lg font-semibold">账号安全</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    修改后台管理员账号和登录密码。
+                  </p>
+                </div>
+                <Field
+                  label="管理员账号"
+                  value={accountForm.username}
+                  onChange={(value) =>
+                    setAccountForm((form) => ({ ...form, username: value }))
+                  }
+                />
+                <Field
+                  label="新密码"
+                  placeholder="留空则保持当前密码"
+                  type="password"
+                  value={accountForm.password}
+                  onChange={(value) =>
+                    setAccountForm((form) => ({ ...form, password: value }))
+                  }
+                />
+                <Field
+                  label="确认新密码"
+                  placeholder="再次输入新密码"
+                  type="password"
+                  value={accountForm.confirmPassword}
+                  onChange={(value) =>
+                    setAccountForm((form) => ({
+                      ...form,
+                      confirmPassword: value,
+                    }))
+                  }
+                />
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <p>账号来源：{adminAccount?.usernameSource ?? "--"}</p>
+                  <p>密码来源：{adminAccount?.passwordSource ?? "--"}</p>
+                </div>
+                <Button disabled={adminBusy} type="submit">
+                  保存账号设置
+                </Button>
+              </form>
 
               <form
                 className="grid gap-3 rounded-lg border border-slate-300 bg-white p-5"

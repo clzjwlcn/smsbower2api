@@ -20,7 +20,7 @@ type ConfigPayload = {
 };
 
 export async function POST(request: Request) {
-  const adminError = requireAdmin(request);
+  const adminError = await requireAdmin(request);
   if (adminError) return adminError;
 
   const payload = await readJson<ConfigPayload>(request);

@@ -1,4 +1,5 @@
 import { getRuntimeEnv } from "@/db";
+import { getAdminCredentials } from "./admin-auth";
 
 export function ok<T>(payload: T, init?: ResponseInit) {
   return Response.json(payload, init);
@@ -34,11 +35,12 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
-export function requireAdmin(request: Request) {
+export async function requireAdmin(request: Request) {
   const runtimeEnv = getRuntimeEnv();
   const token = cleanText(runtimeEnv.ADMIN_TOKEN);
-  const expectedUsername = cleanText(runtimeEnv.ADMIN_USERNAME);
-  const expectedPassword = cleanText(runtimeEnv.ADMIN_PASSWORD);
+  const credentials = await getAdminCredentials();
+  const expectedUsername = credentials.username;
+  const expectedPassword = credentials.password;
   const suppliedUsername = cleanText(request.headers.get("x-admin-username"));
   const suppliedPassword = cleanText(request.headers.get("x-admin-password"));
 
