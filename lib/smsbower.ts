@@ -2,6 +2,8 @@ import { getSmsBowerSettings } from "./settings";
 
 type SmsBowerParams = Record<string, string | number | undefined>;
 
+const REQUEST_TIMEOUT_MS = 20000;
+
 export type SmsBowerNumber = {
   activationId: string;
   phoneNumber: string;
@@ -41,9 +43,29 @@ async function buildUrl(action: string, params: SmsBowerParams = {}) {
 }
 
 async function callText(action: string, params?: SmsBowerParams) {
-  const response = await fetch(await buildUrl(action, params), {
-    headers: { accept: "application/json, text/plain;q=0.9, */*;q=0.8" },
-  });
+  const url = await buildUrl(action, params);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      headers: {
+        accept: "application/json, text/plain;q=0.9, */*;q=0.8",
+        "user-agent": "smsbower2api/0.1",
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`SMSBower 请求超时：${action}`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const text = (await response.text()).trim();
 
   if (!response.ok) {
@@ -54,15 +76,24 @@ async function callText(action: string, params?: SmsBowerParams) {
 }
 
 function assertNotError(raw: string) {
+  const normalized = raw.trim();
+  const lower = normalized.toLowerCase();
+
+  if (lower.startsWith("internal error")) {
+    throw new Error(
+      `SMSBower 上游返回内部错误：${normalized}。这不是本地数据库错误，通常需要联系 SMSBower 客服处理 reference，或确认 API Key/服务器 IP 是否被上游限制。`
+    );
+  }
+
   if (
-    raw.startsWith("BAD_") ||
-    raw.startsWith("NO_") ||
-    raw.startsWith("ERROR") ||
-    raw === "BANNED" ||
-    raw === "WRONG_SERVICE" ||
-    raw === "WRONG_COUNTRY"
+    normalized.startsWith("BAD_") ||
+    normalized.startsWith("NO_") ||
+    normalized.startsWith("ERROR") ||
+    normalized === "BANNED" ||
+    normalized === "WRONG_SERVICE" ||
+    normalized === "WRONG_COUNTRY"
   ) {
-    throw new Error(`SMSBower 返回错误：${raw}`);
+    throw new Error(`SMSBower 返回错误：${normalized}`);
   }
 }
 

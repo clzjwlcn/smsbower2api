@@ -154,6 +154,20 @@ https://smsbower.page/stubs/handler_api.php
 
 API Key 也可以不写在 `.env`，直接在后台“接口设置”里保存。
 
+如果后台“通讯测试”显示：
+
+```text
+SMSBower 上游返回内部错误：internal error; reference = xxxx
+```
+
+说明程序已经连到 SMSBower，但 SMSBower 服务端返回了内部错误。请把 `reference` 发给 SMSBower 客服排查，同时在服务器上直接测试：
+
+```bash
+curl -sS 'https://smsbower.page/stubs/handler_api.php?api_key=你的_API_KEY&action=getBalance'
+```
+
+正常应该返回类似 `ACCESS_BALANCE:1.23`。如果 curl 也返回同样的 `internal error`，就不是本程序或 MySQL 的问题，通常是上游账号、API Key、服务器 IP 或 SMSBower 节点侧限制。
+
 ## SMSBower Webhook
 
 在 SMSBower 个人资料里填写 Webhook 地址：
