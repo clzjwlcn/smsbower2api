@@ -1015,7 +1015,7 @@ export default function DashboardClient({
                 </div>
                 <Field
                   label="HTTP 代理"
-                  placeholder="例如：http://user:pass@1.2.3.4:7890，留空则直连"
+                  placeholder="当前版本保留设置入口，内置代理暂未启用"
                   value={settingsForm.httpProxyUrl}
                   onChange={(value) =>
                     setSettingsForm((form) => ({
@@ -1032,6 +1032,7 @@ export default function DashboardClient({
                       : "未设置，直连"}
                   </p>
                   <p>来源：{adminSettings?.httpProxySource || "--"}</p>
+                  <p>提示：当前 Docker/Vinext 环境暂未启用内置代理。</p>
                 </div>
                 <div className="border-t border-slate-200 pt-3">
                   <h3 className="text-sm font-semibold text-slate-900">首页公告</h3>

@@ -50,18 +50,19 @@ async function callText(action: string, params?: SmsBowerParams) {
   let response: Response;
 
   try {
-    const fetchOptions: RequestInit & { dispatcher?: unknown } = {
+    if (settings.httpProxyUrl) {
+      throw new Error(
+        "当前运行环境暂不支持内置 HTTP 代理，已临时禁用代理以保证网站可访问。请先清空后台 HTTP 代理，或使用服务器系统代理/反向转发方案。"
+      );
+    }
+
+    const fetchOptions: RequestInit = {
       headers: {
         accept: "application/json, text/plain;q=0.9, */*;q=0.8",
         "user-agent": "smsbower2api/0.1",
       },
       signal: controller.signal,
     };
-
-    if (settings.httpProxyUrl) {
-      const { ProxyAgent } = await import("undici");
-      fetchOptions.dispatcher = new ProxyAgent(settings.httpProxyUrl);
-    }
 
     response = await fetch(url, {
       ...fetchOptions,
