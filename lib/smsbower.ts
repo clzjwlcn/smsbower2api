@@ -1,4 +1,3 @@
-import { ProxyAgent } from "undici";
 import { getSmsBowerSettings } from "./settings";
 
 type SmsBowerParams = Record<string, string | number | undefined>;
@@ -49,19 +48,24 @@ async function callText(action: string, params?: SmsBowerParams) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
-  const dispatcher = settings.httpProxyUrl
-    ? new ProxyAgent(settings.httpProxyUrl)
-    : undefined;
 
   try {
-    response = await fetch(url, {
+    const fetchOptions: RequestInit & { dispatcher?: unknown } = {
       headers: {
         accept: "application/json, text/plain;q=0.9, */*;q=0.8",
         "user-agent": "smsbower2api/0.1",
       },
-      dispatcher,
       signal: controller.signal,
-    } as RequestInit & { dispatcher?: ProxyAgent });
+    };
+
+    if (settings.httpProxyUrl) {
+      const { ProxyAgent } = await import("undici");
+      fetchOptions.dispatcher = new ProxyAgent(settings.httpProxyUrl);
+    }
+
+    response = await fetch(url, {
+      ...fetchOptions,
+    });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`SMSBower 请求超时：${action}`);
